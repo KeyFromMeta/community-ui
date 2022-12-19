@@ -1,16 +1,10 @@
 <template>
-  <div>
-      <!-- 搜索栏 -->
-      <!-- <div class="search-bar">
-        <el-input prefix-icon="el-icon-search" v-model="keyWord" placeholder="搜索配置名称/适配游戏名称/用户名" @keyup.enter.native="search" clearable>
-          <el-button slot="suffix" type="text" @click="search()" >搜索</el-button>
-        </el-input>
-      </div> -->
+  <div class="content">
       <!-- 导航栏 -->
       <ul class="navigator">
-        <li><router-link to="/" ><div class="grid-content" id="category0"><span>全部<br>{{totalNumber}}</span></div></router-link></li>
+        <li><router-link to="/creative/" ><div class="grid-content" id="category0"><span>全部<br>{{totalNumber}}</span></div></router-link></li>
         <li v-for="(item,index) in categoryList" :key="index">
-          <router-link  :to="'/' + item.type">
+          <router-link  :to="'/creative/' + item.type">
             <div class="grid-content" :id="'category'+item.type" > 
               <span>{{categoryDict[item.type]}}<br>{{item.count}}</span>
             </div> 
@@ -19,13 +13,15 @@
       </ul>
       <!-- 表格 -->
       <div class="game-rank-table">
-        <el-table 
+        <el-table
+          @filter-change="handleTagChange" 
+          width="100%"
           :data="gameList"
-          height:70px
-          header-cell-style="background-color:rgba(255, 255, 255, 0.2);">
+          max-height="450"
+          header-cell-style="background-color:rgba(255, 255, 255, 0.4);">
           <el-table-column
             label="" width="55px">
-                <img src="../assets/configicon.png"/>
+                <img src="./../../assets/configicon.png"/>
           </el-table-column>
           <el-table-column
             label="配置名称">
@@ -42,13 +38,14 @@
           <el-table-column width="120"
             label="简介">
             <template slot-scope="scope">
-              {{ categoryDict[scope.row.Category]}}
+              {{ scope.row.Info}}
             </template>
           </el-table-column>
           <el-table-column width="80"
-            label="标签" 
-            :filters="[{text:'全部',value:'0'},{text: '坐姿', value: '1'}, {text: '站姿', value: '2'}]"
-            :filter-method="filterHandler">
+            label="标签"
+            column-key="filterTag" 
+            :filters="[{text: '坐姿', value: 1}, {text: '站姿', value: 2}]"
+            >
             <template slot-scope="scope">
               {{ transferTag(scope.row.Tag)}}
               <!-- {{scope.row.Category}} -->
@@ -74,8 +71,8 @@
           </el-table-column>
           <el-table-column
             class="option" align="right">
-            <template>
-              <el-button type="text">
+            <template slot-scope="scope">
+              <el-button type="text" @click="viewDetails(scope.row.Id)">
                     查看详情
               </el-button>
             </template>
@@ -126,7 +123,7 @@
 </template>
 
 <script>
-  import tableApi from '../api/table'
+  import tableApi from './../../api/table'
   export default {
     name:'gameRank',
     data() {
@@ -175,7 +172,6 @@
     mounted() {
       this.$bus.$on('stateChange',(data)=>{
         //由searchBar主动向gameRank同步关键字
-        console.log('stateChange')
         if(data[0]=='category'){
           this.state = 1
         }else if(data[0]=='search'){
@@ -184,36 +180,32 @@
           this.fetchData()
         }
       }),
-      // this.$bus.$on('sendKeyWord',(key)=>{
-      //   console.log("收到keyword为:",key)
-      //   this.keyWord = key
-      //   console.log("赋值之后keyword:",this.keyWord)
-      //   console.log("key:",key)    
-      // })
-      this.fetchData()
+      this.$bus.$off('sendKeyWord').$on('sendKeyWord',(key)=>{
+        this.keyWord = key
+        this.fetchData()
+      })
+      
     },
     created() {
-      console.log("刷新")
+      this.init()
     },
     beforeDestroy(){
       this.$bus.$off('stateChange')
-      this.$bus.$off('sendKeyWord')
+      //this.$bus.$off('sendKeyWord')
       this.$bus.$off('changeSizeOrPage')
-      this.$bus.$off('getKeyWord')
+      //this.$bus.$off('getKeyWord')
     },
     methods:{
+      init(){
+        this.$nextTick(function () {
+           this.$bus.$emit('getKeyWord')
+        })
+      },
       fetchData(){
-        this.$bus.$emit('getKeyWord',this.keyWord)
-      //   this.$bus.$on('sendKeyWord',(key)=>{
-      //   console.log("收到keyword为:",key)
-      //   this.keyWord = key
-      //   console.log("赋值之后keyword:",this.keyWord)
-      //   console.log("key:",key)    
-      // })
-        console.log("通信流程完成,现在key为:",this.keyWord)
         var currentUrlArr = window.location.href.split("/")
         this.currentCategory = Number(currentUrlArr[currentUrlArr.length-1]==''?0:currentUrlArr[currentUrlArr.length-1])
-        console.log('关键字为：',this.keyWord,"当前页：",this.currentPage,"条目数：",this.limit,"分类为:",this.categoryDict[this.currentCategory])
+        console.log('关键字为：',this.keyWord,"当前页：",this.currentPage,"条目数：",this.limit,"分类为:",this.categoryDict[this.currentCategory],
+        "tag为：",this.tags)
         tableApi.getListBySearchKey(this.keyWord,this.currentPage,this.limit,this.tags,this.currentCategory).then(response => {
           this.gameList = response.data.ConfigBoardList
           this.totalItem = response.data.TotalNum
@@ -230,44 +222,11 @@
           console.log(err)
         })
       },
-      // fetchData() {
-      //     // 调用api
-      //     var currentUrlArr = window.location.href.split("/")
-      //     this.currentCategory = Number(currentUrlArr[currentUrlArr.length-1]==''?0:currentUrlArr[currentUrlArr.length-1])
-      //     //console.log('当前状态为：',this.state)
-      //     //console.log(this.categoryDict[this.currentCategory])
-      //     if(this.state==1){
-      //       //说明应该返回分类的结果
-      //       console.log('当前分类为：',this.currentCategory,"分类名为：",this.categoryDict[this.currentCategory],"当前页：",this.currentPage,"条目数：",this.limit)
-      //       tableApi.getCertainCategoryList(this.currentCategory,this.currentPage,this.limit).then(response => {
-      //         this.gameList = response.data.ConfigBoardList
-      //         this.totalItem = response.data.TotalNum
-      //         //获取分类信息
-      //         var total = 0
-      //         for(let i=0; i<response.data.CategoryInfo.length;i++){
-      //           this.categoryList[i].count = response.data.CategoryInfo[i].Count
-      //           this.categoryList[i].type = response.data.CategoryInfo[i].Type
-      //           total+=response.data.CategoryInfo[i].Count
-      //         }
-      //         this.totalNumber = total
-      //       }).catch(err=>{
-      //         //this.$message.error(err.message)
-      //         console.log(err)
-      //       })
-            
-      //     }else if(this.state==2){
-      //       //返回搜索的结果
-      //       console.log('关键字为：',this.keyWord,"当前页：",this.currentPage,"条目数：",this.limit)
-      //       tableApi.getListBySearchKey(this.keyWord,this.currentPage,this.limit).then(response => {
-      //         this.gameList = response.data.ConfigBoardList
-      //         this.totalItem = response.data.TotalNum
-      //       }).catch(err=>{
-      //         //this.$message.error(err.message)
-      //         console.log(err)
-      //       })
-      //     } 
-      // }, 
-      filterHandler(){},
+      handleTagChange(filters){
+        this.currentPage = 1
+        this.tags = filters.filterTag
+        this.fetchData()
+      },
       handleSizeChange(val) {
         //改变每页的条目数
         this.$bus.$emit('changeSizeOrPage') //每次修改发送同步消息
@@ -358,7 +317,7 @@
         }
       },
       addToApplicatedList(id){
-      this.applicatedList.push(id)
+        this.applicatedList.push(id)
       },
       removeFromApplicatedList(id){
         for(let i=0;i<this.applicatedList.length;i++){
@@ -368,13 +327,16 @@
           }
         }
       },
-      transferDate(n) {
+      transferDate(time) {
         //将创建日期由时间戳转换为yyyy-mm-dd hh:mm:ss
-        let now = new Date(n),
-        y = now.getFullYear(),
-        m = now.getMonth() + 1,
-        d = now.getDate();
-        return y + "-" + (m < 10 ? "0" + m : m) + "-" + (d < 10 ? "0" + d : d) +"\r\n"+now.toTimeString().substr(0, 8)
+        var unixTimestamp = new Date(time*1000);
+        var commonTime = unixTimestamp.toLocaleString()
+        return commonTime
+      },
+      async viewDetails(id){
+        console.log(JSON.stringify({profileId:id}))
+        var result = await window.chrome.webview.hostObjects.kfmJsApi.call("biz.gameProfile.preview",JSON.stringify({profileId:id}))
+        console.log(result)
       }
     }
   }
@@ -417,41 +379,42 @@
       box-shadow: 100px #cc070733;
     }
     .navigator{
-      margin-left:1.8%;
+      margin-left:4.7%;
+      width:100%;
     }
     .navigator ul{
       list-style-type: none;
     }
     .navigator li{
       display: inline-block;
-      margin:5px;
+      margin:7px;
     }
     .grid-content {
-      width: 150px;
+      width: 153px;
       height: 80px;
       border-radius: 8px;
       padding-top:8%;
     }
     #category0{
-      background: url('../assets/allBg.png');
+      background: url('./../../assets/allBg.png');
     }
     #category1{
-      background: url('../assets/sportGameBg.png');
+      background: url('./../../assets/sportGameBg.png');
     }
     #category2{
-      background: url('../assets/musicGameBg.png');
+      background: url('./../../assets/musicGameBg.png');
     }
     #category3{
-      background: url('../assets/actionGameBg.png');
+      background: url('./../../assets/actionGameBg.png');
     }
     #category4{
-      background: url('../assets/adventureGameBg.png');
+      background: url('./../../assets/adventureGameBg.png');
     }
     #category5{
-      background: url('../assets/rolePlayBg.png');
+      background: url('./../../assets/rolePlayBg.png');
     }
     #category6{
-      background: url('../assets/shooterGameBg.png');
+      background: url('./../../assets/shooterGameBg.png');
     }
     .navigator a{
       text-decoration: none;
@@ -474,6 +437,9 @@
     </style>
     <style scoped>
     /* 表格样式 */
+    .content{
+      width:100%;
+    }
     .game-rank-table{
       width:90%;
       margin:0px auto;
@@ -481,7 +447,7 @@
       padding-bottom:30px;
     }
     /deep/ .el-pagination .el-input__inner{
-      background-color: rgba(255, 255, 255, 0.3);
+      background-color:#fff0;
       border: 2px;
     }
     .el-pagination{
@@ -493,7 +459,7 @@
         line-height: 24px;
         letter-spacing: 0px;
         color: #606266;
-        background-color: rgba(255, 255, 255, 0.5);
+        background-color: rgba(255, 255, 255, 0.9);
     }
     .el-table{
       font-family: Inter-Medium;
@@ -505,21 +471,31 @@
       color: #4C526A;
     }
     /deep/ .el-table, /deep/ .el-table__expanded-cell{
-      background-color: rgba(255, 255, 255, 0.2);
+      background-color: rgba(255, 255, 255, 0.5);
     }
     /* 表格内背景颜色 */
     /deep/ .el-table th,
     /deep/ .el-table tr,
     /deep/ .el-table td {
-      background-color: rgba(255, 255, 255, 0.2);
+      background-color: rgba(255, 255, 255, 0.5);
     }
-
-.container .el-icon-arrow:before{
-  font-family:"iconfont" !important;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-size:24px;
-  font-style:normal;
-  content: "\e62e";
-}
+  /deep/.el-pagination button:disabled,
+  /deep/.el-pagination .btn-next, 
+  /deep/.el-pagination .btn-prev,
+  /deep/.el-pager li {
+    background: center center no-repeat #fff0;
+  }
+  /deep/ .el-select__caret el-input__icon el-icon-arrow-up{
+    color: #020202;
+    font-size: 20px;
+  }
+  /deep/.el-table__column-filter-trigger i {
+    color: #0d0d0e;
+    font-size: 30px;
+    content:url('./../../assets/Vector.png')
+  }
+  /deep/.el-select .el-input .el-select__caret {
+    color: #0c0c0c;
+    font-size: 18px;
+  }
 </style>

@@ -16,7 +16,7 @@ export default {
       data:data
     })
   },
-  //通过关键字搜索获取配置列表
+  //通过关键字、标签、分类 搜索获取配置列表
   getListBySearchKey(keyword,page,max_num,tags,category){
     let data = {"searchkey":keyword,"page":page,"max_num":max_num,"tags":tags,"category":category}
     return request({ 

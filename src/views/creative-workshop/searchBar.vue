@@ -24,7 +24,6 @@ export default {
       this.$bus.$emit('sendKeyWord',this.keyWord)
     }),
     this.$bus.$on('getKeyWord',()=>{
-      console.log("getKeyWord接收到")
       this.$bus.$emit('sendKeyWord',this.keyWord)
     })
   },
@@ -41,7 +40,7 @@ export default {
         }
     },
     handleEmpty(){
-
+      this.$bus.$emit('stateChange',['search',this.keyWord])
     }
   }
 }
@@ -49,14 +48,14 @@ export default {
 <style>
     .search-bar{
         margin:15px 4%;
-        width:90%;
+        width:91%;
     }
     .search-bar .el-input__inner{
         height:50px;
         margin-top: 20px;
-        margin-left:25px;
+        margin-left:8px;
         /*字体*/
-        font-family: Inter-Medium;
+        font-family: Rajdhani-SemiBold;
         font-size: 20px;
         font-weight: 600;
         line-height: 30px;
@@ -66,8 +65,9 @@ export default {
         border:0px;
     }
     .search-bar .el-icon-search{
-        font-size:35px; 
+        font-size:30px; 
         margin-top:27px;
+        margin-left:10px;
         color: #b8b9bd; 
     }
     .search-bar .el-button{
@@ -81,4 +81,12 @@ export default {
         /* Primary/Blue */
         color: #0256FF;
     }
+</style>
+<style scoped>
+  /deep/.el-input__prefix {
+        left: 20px;
+      }
+  /deep/.el-input--prefix .el-input__inner {
+      padding-left: 60px;
+  }
 </style>

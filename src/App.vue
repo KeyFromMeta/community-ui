@@ -1,28 +1,21 @@
 <template>
   <div class="app-container">
-    <search-bar></search-bar>
-    <!-- <navigator/> -->
-    <!-- <middle-bar></middle-bar> -->
-    <div class="content-container">
-      <!--指定组件的呈现位置-->
-      <router-view></router-view>
-    </div>
+    <Layout></Layout>
   </div>
 </template>
 <script>
-// import navigator from './components/navigator.vue'
-import SearchBar from './components/searchBar.vue'
-// import MiddleBar from './components/middleBar.vue'
-
+import Layout from '../src/layout/Layout'
 export default {
-  components: {SearchBar},
+  components: {Layout},
   name: 'App',
 }
 </script>
 <style>
    .app-container{
-    margin-top:-29px;
-    background: url('../src/assets/background.png') repeat; 
-    /* background-color: aquamarine; */
+    /* margin-top:-29px; */
+    background-image: url('../src/assets/background.png'); 
+    background-size: 100%;
+    background-repeat:repeat;
+
   }
 </style>

@@ -3,10 +3,10 @@
 </template>
 
 <script>
-import gameRank from '@/components/gameRank.vue'
+import gameRank from '../gameRank.vue'
 export default {
     components: { gameRank },
-    name:'actionGame'
+    name:'rolePlayGame'
 }
 </script>
 
