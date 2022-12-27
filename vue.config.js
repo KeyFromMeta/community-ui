@@ -4,6 +4,7 @@ module.exports = defineConfig({
 })
 //解决跨域问题
 module.exports = {
+  publicPath:'/keyfrommeta',
   devServer:{
     https: false, // https:{type:Boolean}
     proxy:{

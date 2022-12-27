@@ -4,8 +4,10 @@
         <el-dialog :visible.sync="dialogVisible" width="400px">
             <div class="scan">
                 <h1>下载“开元通宝”手机APP</h1>
-                <img class="code" src="../../assets/code.png"/>
-                <span>如未下载app请扫码下载，<br>如已下载请跳过</span>
+                <!-- <img class="code" src="../../assets/code.png"/> -->
+                <div class="qrcode" ref="downloadUrl"></div>
+                <span id="tip">如未下载app请扫码下载，<br>如已下载请跳过</span>
+                <!-- <el-button id="download-button" type="primary" size="mini">点击刷新二维码</el-button> -->
             </div>
             
         </el-dialog>
@@ -35,33 +37,42 @@
             </ul>
         </div>
         <div class="content">
-            <ul>
+            <ul id="below">
                 <li id="first">
                     <img :src="wifiImgUrl" alt="wifi" id="wifi" class="img mask"/>
-                    <span class="cover-first" v-if="!wifiStatus">去连接</span>
+                    <!-- <span class="cover-first" v-if="!wifiStatus">去连接</span> -->
                     <div class="title">WIFI连接状态</div>
                     <div class="status">{{wifiTitle[wifiStatus]}}</div>
                 </li>
                 <li id="second">
                     <img :src="usbImgUrl" alt="usb" id="usb" class="img mask"/>
-                    <span class="cover-second">去连接</span>
+                    <!-- <span class="cover-second">去连接</span> -->
                     <div class="title">USB连接状态</div>
                     <div class="status">{{usbTitle[usbStatus]}}</div>
                 </li>
                 <li id="third">
-                    <!-- <QrcodeVue class="code" :value="value"></QrcodeVue> -->
+                    <div @click="handleFreshCode()" class="qrcode" ref="qrCodeUrl">
+                        <span class="occupy">连接wifi后点击获取二维码</span>                           
+                    </div>
+                    <!-- <QrcodeVue class="code" :value='value'></QrcodeVue>  -->
                     <!-- <img class="code" src="../../assets/code.png"/> -->
-                    <el-button type="primary" size="mini" @click="handleClick()">扫码完成去设备匹配</el-button>
+                    <div class="sensor-tip">
+                        <span>已接入传感器数量{{2}}台</span>
+                    </div>
                 </li>
             </ul>
+            <router-link to="/plan"><el-button id="configNet-button" type="primary" size="mini">已完成配对，前往方案配置</el-button></router-link>
         </div>
     </div>
 </template>
 <script>
 // import QrcodeVue from 'qrcode.vue';
+import QRCode from 'qrcodejs2';
 export default {
     components: {
         // QrcodeVue
+        // eslint-disable-next-line vue/no-unused-components
+        QRCode
     },
     computed:{
         wifiImgUrl:function(){
@@ -83,34 +94,129 @@ export default {
         }
     },
     created() {
-        this.addListener()
+        this.init()
+        this.addWifiListener()
+        this.addUsbListener()
     },
     methods: {
-        addListener(){
-            //注册监听
-            window.chrome.webview.addEventListener('util.wifi.GetCurrentWIFIInfo', event => {console.log(event.data);
-                this.handleListenerEvent(event.data)
-            });
-            window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.GetCurrentWIFIInfo",event=>{
-                console.log(event)
-            });
+        createDownloadQrCode(codeContent){
+            //生成app下载二维码
+            this.$refs.downloadUrl.innerHTML = ""
+            var qrcode = new QRCode(this.$refs.downloadUrl,{
+                text:codeContent,//可以是链接，也可以是文本
+                width:150,//二维码的宽度
+                height:150,//二维码的高度
+                colorLight:'#ffffff',//二维码背景色
+                colorDark:'#000000',//二维码前景色，以实现红码为例
+                correctLevel: QRCode.CorrectLevel.H, //纠错等级
+            })
+            qrcode.makeCode();
         },
-        handleListenerEvent(data){
+        createConfigNetQrcode(codeContent){
+            //生成配网二维码
+            this.$refs.qrCodeUrl.innerHTML = ""
+            var qrcode = new QRCode(this.$refs.qrCodeUrl,{
+                text:codeContent,//可以是链接，也可以是文本
+                width:150,//二维码的宽度
+                height:150,//二维码的高度
+                colorLight:'#ffffff',//二维码背景色
+                colorDark:'#000000',//二维码前景色，以实现红码为例
+                correctLevel: QRCode.CorrectLevel.H, //纠错等级
+            })
+            qrcode.makeCode();
+        },
+        init(){
+            //初始化usb状态
+            window.chrome.webview.addEventListener('message', event => this.handler(event.data));
+			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.usb.GetCurrentKeystoneConnection","");
+            //初始化wifi状态
+            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
+			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.GetCurrentWIFIInfo","");
+        },
+        handler(data){
             let result = JSON.parse(data)
-            //根据监听到的内容处理状态
-            if(result.params.WlanState==1){
+            console.log(result.eventName)
+            switch(result.eventName){
+                case 'util.wifi.GetCurrentWIFIInfo':{
+                    this.initWifi(result)
+                    break;
+                }
+                case 'util.wifi.WIFIStateChange':{
+                // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
+		window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.GetCurrentWIFIInfo","");
+                    this.handleFreshCode()
+                    break;
+                }
+                case 'util.usb.GetCurrentKeystoneConnection':{
+                    this.initUsb(result)
+                    break;
+                }
+                case 'util.usb.keystoneConnectStateChange':{
+            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
+			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.usb.GetCurrentKeystoneConnection","");
+                    break;
+                }
+                case 'util.wifi.WlanConfigure':{
+                    // this.codeValue = result.params.config
+                    this.createConfigNetQrcode(result.params.config)
+                    break;
+                }
+                case 'util.wifi.DownloadInfo': {
+                    this.createDownloadQrCode(result.params.config)
+                    break;
+                }
+            }
+        },
+        addWifiListener(){
+            //监听wifi状态
+            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
+			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.WIFIStateChange",""); 
+        },
+        addUsbListener(){
+            //监听usb状态
+            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
+			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.usb.keystoneConnectStateChange",""); 
+        },
+        initWifi(result){
+            this.$bus.$emit('wifiStateChange',result.params)
+            if(result.params.WlanState=='1'){
                 document.getElementById('wifi').style.opacity = '1' //修改样式去掉遮罩
+                //document.getElementById('first').style.margin= '30px' //修改样式去掉遮罩
                 this.wifiStatus = true
                 this.wifiTitle.true = "已连接 "+ result.params.WlanName
+            }else if(result.params.WlanState=='0'){
+                document.getElementById('wifi').style.opacity = '0.5' //修改样式去掉遮罩
+                //document.getElementById('first').style.margin= '77px'
+                this.wifiStatus = false
+                this.wifiTitle.true = "未连接"
+            }
+        },
+        initUsb(result){
+            this.$bus.$emit('usbStateChange',result.params)
+            if(result.params.connected=='1'){
+                document.getElementById('usb').style.opacity = '1' //修改样式去掉遮罩
+                this.usbStatus = true
+                this.usbTitle.true = "已连接 开元通宝"
+            }else if(result.params.connected=='0'){
+                document.getElementById('usb').style.opacity = '0.5' //修改样式去掉遮罩
+                this.usbStatus = false
+                this.usbTitle.true = "未连接"
             }
         },
         handleScan(){
             //点击扫码下载
             this.dialogVisible = true
+            this.$nextTick(()=>{
+                this.createDownloadQrCode('123') //待删
+            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
+			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.DownloadInfo","");
+            })
         },
-        handleClickWifi(){
-
-        }
+        handleFreshCode(){
+            //刷新配网二维码
+            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
+			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.WlanConfigure","");
+        },
     },
 }
 </script>
@@ -124,25 +230,35 @@ export default {
     h1{
         text-align: center;
     }
-    .steps li{
-        display: inline-block;
-    }
-    .content li{
-        display: inline-block;
-    }
+    
+    /* 下载app弹框*/
     .download-app-tip{
         text-align: center;
         color:rgb(131, 131, 128);
         margin-top:20px;
     }
+    .el-dialog .qrcode{
+        margin:auto;
+    }
+    .scan{
+        text-align: center;
+    }
+    .scan h1{
+        margin-bottom: 30px;
+    }
+    #tip{
+        margin-top:30px;
+        display: inline-block;
+    }
+    
+    /*步骤条样式*/
     .steps{
         margin:auto;
         margin-top:80px;
         text-align:center;
     }
-    .content{
-        margin:50px auto;
-        /* text-align:center; */
+    .steps li{
+        display: inline-block;
     }
     .steps li div{
         margin-left:10px;
@@ -155,43 +271,75 @@ export default {
     .step-instr{
         display: inline-block;
     }
+
+    /*步骤条下方内容*/
+    .content{
+        margin:50px auto;
+        /* text-align:center; */
+    }
+    .content li{
+        display: inline-block;
+        width:120px;
+    }
     #first{
-        margin-left:77px;
+        margin-left:70px;
         text-align: center;
     }
     #second{
-        margin-left:360px;
+        margin-left:320px;
         text-align: center;
+        padding:auto;
     }
     #third{
-        margin-left:360px;
+        margin-left:370px;
         text-align: center;
     }
-    .code{
-        width:150px;
-        height: 150px;
-        display: block;
+    .sensor-tip{
+        /* text-align: center; */
+        color:rgb(131, 131, 128);
+        margin-top:15px;
+        margin-left:30px;
     }
-    .el-button{
-        margin-top:20px;
-    }
+
+    /* 下方标题 */
     .title{
         margin-top:30px;
         font-size:10px;
         color:rgb(124, 122, 120)
     }
+    /* 下方状态 */
     .status{
         margin-top:20px;
     }
-    .el-dialog .code{
-        margin:auto;
+
+    /* 二维码 */
+    .qrcode{
+        width:150px;
+        height: 150px;
+        display: block;
+        cursor: pointer;
     }
-    .scan{
+    .occupy{
+        width: 150px;
+        padding-top:70px;
+        height:90px;
         text-align: center;
+        display: inline-block;
+        color:rgb(120, 120, 124);
+        border:dashed 1px rgb(150 190 231);
     }
-    .scan h1{
-        margin-bottom: 30px;
+
+    /* 跳转按钮 */
+    #configNet-button{
+        margin-top:20px;
+        margin-left:990px;
     }
+    a:-webkit-any-link {
+        color: aliceblue;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
     /* 给图片加遮罩 */
     .content .mask{
         opacity: 0.5; 

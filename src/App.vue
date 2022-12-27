@@ -14,8 +14,9 @@ export default {
    .app-container{
     /* margin-top:-29px; */
     background-image: url('../src/assets/background.png'); 
-    background-size: 100%;
-    background-repeat:repeat;
-
+    background-size: cover;
+    background-repeat:no-repeat;
+    height:720px;
+    width:1280px;
   }
 </style>

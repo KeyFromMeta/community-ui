@@ -63,13 +63,29 @@ export default {
         userName:"test"
       };
     },
+    mounted() {
+        this.$bus.$on('wifiStateChange',(data)=>{
+            if(data.WlanState=='1'){
+                this.wifiStatus = true
+            }else if(data.WlanState=='0'){
+                this.wifiStatus = false
+            }
+        })
+        this.$bus.$on('usbStateChange',(data)=>{
+            if(data.connected=='1'){
+                this.usbStatus = true
+            }else if(data.connected=='0'){
+                this.usbStatus = false
+            }
+        })
+    },
     methods: {
       handleSelect(key, keyPath) {
        console.log(key,keyPath)
       },
       handleClose(){
-        window.chrome.webview.addEventListener('message',event=>alert(event.data))
-        window.chrome.webview.hostObjects.JSserveinit.JSapiRouter("Jsapi.Util.Window")
+        window.chrome.webview.addEventListener('message',event=>{console.log(event)})
+        window.chrome.webview.hostObjects.JSserveinit.JSapiRouter("util.window.close","")
       }
     }
 }

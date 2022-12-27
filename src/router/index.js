@@ -11,6 +11,8 @@ import category5 from '../views/creative-workshop/pages/5'
 import category6 from '../views/creative-workshop/pages/6'
 
 export default new VueRouter({
+    mode:'history',
+    base:'/keyfrommeta',
     linkActiveClass: 'active',
     routes:[
         {
