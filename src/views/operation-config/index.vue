@@ -95,8 +95,6 @@ export default {
     },
     created() {
         this.init()
-        this.addWifiListener()
-        this.addUsbListener()
     },
     methods: {
         createDownloadQrCode(codeContent){
@@ -125,39 +123,28 @@ export default {
             })
             qrcode.makeCode();
         },
-        init(){
-            //初始化usb状态
+        init() {
+            // 注册 event 监听
             window.chrome.webview.addEventListener('message', event => this.handler(event.data));
-			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.usb.GetCurrentKeystoneConnection","");
-            //初始化wifi状态
-            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
-			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.GetCurrentWIFIInfo","");
+            // TODO @魏泽坤 2022-12-28 后续使用 JSAPI 返回值
+            // 初始化wifi状态
+            window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.GetCurrentWIFIInfo", "");
+            // 初始化usb状态
+            window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.usb.GetCurrentKeystoneConnection", "");
         },
         handler(data){
             let result = JSON.parse(data)
             console.log(result.eventName)
-            switch(result.eventName){
-                case 'util.wifi.GetCurrentWIFIInfo':{
-                    this.initWifi(result)
+            switch (result.eventName) {
+                case 'util.wifi.WIFIStateChange': {
+                    this.handleWifiStateChange(result)
                     break;
                 }
-                case 'util.wifi.WIFIStateChange':{
-                // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
-		window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.GetCurrentWIFIInfo","");
-                    this.handleFreshCode()
+                case 'util.usb.keystoneConnectStateChange': {
+                    this.handleKeystoneStateChange(result)
                     break;
                 }
-                case 'util.usb.GetCurrentKeystoneConnection':{
-                    this.initUsb(result)
-                    break;
-                }
-                case 'util.usb.keystoneConnectStateChange':{
-            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
-			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.usb.GetCurrentKeystoneConnection","");
-                    break;
-                }
-                case 'util.wifi.WlanConfigure':{
-                    // this.codeValue = result.params.config
+                case 'util.wifi.WlanConfigure': {
                     this.createConfigNetQrcode(result.params.config)
                     break;
                 }
@@ -167,37 +154,27 @@ export default {
                 }
             }
         },
-        addWifiListener(){
-            //监听wifi状态
-            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
-			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.WIFIStateChange",""); 
-        },
-        addUsbListener(){
-            //监听usb状态
-            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
-			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.usb.keystoneConnectStateChange",""); 
-        },
-        initWifi(result){
-            this.$bus.$emit('wifiStateChange',result.params)
-            if(result.params.WlanState=='1'){
+        handleWifiStateChange(result){
+            this.$bus.$emit('wifiStateChange', result.params)
+            if (result.params.WlanState == '1') {
                 document.getElementById('wifi').style.opacity = '1' //修改样式去掉遮罩
                 //document.getElementById('first').style.margin= '30px' //修改样式去掉遮罩
                 this.wifiStatus = true
-                this.wifiTitle.true = "已连接 "+ result.params.WlanName
-            }else if(result.params.WlanState=='0'){
+                this.wifiTitle.true = "已连接 " + result.params.WlanName
+            } else if (result.params.WlanState == '0') {
                 document.getElementById('wifi').style.opacity = '0.5' //修改样式去掉遮罩
                 //document.getElementById('first').style.margin= '77px'
                 this.wifiStatus = false
                 this.wifiTitle.true = "未连接"
             }
         },
-        initUsb(result){
-            this.$bus.$emit('usbStateChange',result.params)
-            if(result.params.connected=='1'){
+        handleKeystoneStateChange(result){
+            this.$bus.$emit('usbStateChange', result.params)
+            if (result.params.connected == '1') {
                 document.getElementById('usb').style.opacity = '1' //修改样式去掉遮罩
                 this.usbStatus = true
                 this.usbTitle.true = "已连接 开元通宝"
-            }else if(result.params.connected=='0'){
+            } else if (result.params.connected == '0') {
                 document.getElementById('usb').style.opacity = '0.5' //修改样式去掉遮罩
                 this.usbStatus = false
                 this.usbTitle.true = "未连接"
@@ -208,14 +185,12 @@ export default {
             this.dialogVisible = true
             this.$nextTick(()=>{
                 this.createDownloadQrCode('123') //待删
-            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
-			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.DownloadInfo","");
+			          window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.DownloadInfo","");
             })
         },
         handleFreshCode(){
             //刷新配网二维码
-            // window.chrome.webview.addEventListener('message', event => this.handler(event.data));
-			window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.WlanConfigure","");
+            window.chrome.webview.hostObjects.JSservinit.JSapiRouter("util.wifi.WlanConfigure","");
         },
     },
 }
